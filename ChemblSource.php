@@ -172,7 +172,8 @@ final class ChemblSource extends HttpSource
             $entity = $entity->with(['identifiers' => $entity->identifiers->merge(new Identifiers($this->crossReferences($id)))]);
         }
         if ($this->mechanisms) {
-            $entity = $entity->with(['properties' => [...$entity->properties, ...$this->mechanismsOf($id)]]);
+            [$properties, $related] = $this->mechanismsOf($id);
+            $entity = $entity->with(['properties' => [...$entity->properties, ...$properties], 'related' => $related + $entity->related]);
         }
 
         return $entity;
@@ -202,9 +203,11 @@ final class ChemblSource extends HttpSource
     /**
      * The mechanisms of action ChEMBL curated for the molecule: what it does
      * ("Adenosine receptor antagonist"), the action, the target by name and
-     * by ChEMBL id; the targets' names in one more call.
+     * by ChEMBL id; the targets' names and proteins in one more call. The
+     * targets and their proteins (UniProt) are related things, not the
+     * molecule's identifiers.
      *
-     * @return list<Property>
+     * @return array{list<Property>, array<string, Identifiers>}
      */
     private function mechanismsOf(string $chemblId): array
     {
@@ -212,7 +215,7 @@ final class ChemblSource extends HttpSource
         $ids = array_values(array_unique(array_filter(array_map(static fn (array $m) => $m['target_chembl_id'] ?? null, $mechanisms))));
         $targets = [];
         if ($ids) {
-            foreach ($this->getJson('target/set/'.implode(';', $ids).'.json', ['only' => 'target_chembl_id,pref_name,target_type,organism'])['targets'] ?? [] as $target) {
+            foreach ($this->getJson('target/set/'.implode(';', $ids).'.json', ['only' => 'target_chembl_id,pref_name,target_type,organism,target_components'])['targets'] ?? [] as $target) {
                 $targets[$target['target_chembl_id'] ?? ''] = $target;
             }
         }
@@ -229,8 +232,20 @@ final class ChemblSource extends HttpSource
             $add('target', 'Target', null === $target ? null : self::text($target['pref_name'] ?? null).self::details(strtolower((string) ($target['target_type'] ?? '')), (string) ($target['organism'] ?? '')));
             $add('target_chembl_id', 'Target (ChEMBL id)', $mechanism['target_chembl_id'] ?? null);
         }
+        $proteins = [];
+        foreach ($targets as $target) {
+            foreach ($target['target_components'] ?? [] as $component) {
+                if ('PROTEIN' === ($component['component_type'] ?? null)) {
+                    $proteins[] = Identifier::tryOf(Scheme::UNIPROT, $component['accession'] ?? null);
+                }
+            }
+        }
+        $related = array_filter([
+            'target' => new Identifiers(array_map(static fn (string $id) => Identifier::tryOf(Scheme::CHEMBL, $id), $ids)),
+            'target_protein' => new Identifiers($proteins),
+        ], static fn (Identifiers $i) => \count($i) > 0);
 
-        return $properties;
+        return [$properties, $related];
     }
 
     /** @param array<string, mixed> $molecule a molecule as ChEMBL gives it */

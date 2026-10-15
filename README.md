@@ -17,6 +17,7 @@ $caffeine->property('alogp');                    // -1.03
 $caffeine->property('tpsa');                     // 61.82 Å²
 $caffeine->value('rule_of_five');                // true: no violation of Lipinski's rule of five
 $caffeine->value('target');                      // Adenosine receptor (protein family, Homo sapiens)
+$caffeine->related('target_protein');            // uniprot:P30542, P29275, P0DMS8, P29274: what it acts on
 $caffeine->identifier(Scheme::CHEBI);            // 27732, from UniChem; PubChem 2519 too
 $chembl->entity('RYYVLZVUVIJVGH-UHFFFAOYSA-N');  // the same, by its InChIKey; or 'caffeine', 'guaranine'
 $chembl->search(new Query('caffeine', limit: 10));

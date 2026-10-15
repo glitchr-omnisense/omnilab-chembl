@@ -36,7 +36,7 @@ ChEMBL id there. UniChem's legacy GET interface (`/unichem/rest/`) answers 404.
 | `entity()` | a ChEMBL id (`CHEMBL113`, `chembl:CHEMBL113`, `chembl.compound:CHEMBL113`, its page) | `molecule/{id}.json` |
 | | a standard InChIKey | `molecule/{inchikey}.json`: ChEMBL reads a key where it reads an id |
 | | a name | `molecule.json?pref_name__iexact=`; when none, `molecule.json?molecule_synonyms__molecule_synonym__iexact=` |
-| | then, for each | UniChem `POST compounds {"type": "sourceID", "sourceID": 1, "compound": id}`; `mechanism.json?molecule_chembl_id=`; `target/set/{ids}.json` |
+| | then, for each | UniChem `POST compounds {"type": "sourceID", "sourceID": 1, "compound": id}`; `mechanism.json?molecule_chembl_id=`; `target/set/{ids}.json` with their components |
 | `search()` | a full InChIKey | `molecule.json?molecule_structures__standard_inchi_key=` |
 | | an InChIKey's first block (14 letters: the skeleton) | `molecule.json?molecule_structures__standard_inchi_key__startswith=` |
 | | any other text; a domain other than chemistry answers nothing | `molecule/search.json?q=` (names, synonyms, ids; the best first) |
@@ -92,8 +92,13 @@ ChEMBL counts 6 acceptors, PubChem 3. After a merge both are kept, each with its
 `identifiers`: the InChIKey and the InChI, then UniChem's ChEBI id, PubChem CID, UNII and
 DSSTox id when it has them (caffeine: CHEBI:27732, CID 2519, 3G6A5W338E, DTXSID0020232). UniChem
 lists more bases (DrugBank, HMDB, the PDB ligand, Guide to Pharmacology, clinical trials...):
-the core has no scheme for them. A target's UniProt accessions are not the molecule's, and are
-not given as its identifiers.
+the core has no scheme for them.
+
+`related`: what the molecule acts on, not what it is - `target`, the ChEMBL ids of its
+mechanisms' targets (caffeine: CHEMBL2111329, the adenosine receptor family), and
+`target_protein`, the UniProt accessions of their proteins (P30542, P29275, P0DMS8, P29274: the
+receptors A1, A2b, A3 and A2a). The Collector does not follow them; an application can ask a
+UniProt source for them.
 
 ## The Collector: caffeine from PubChem
 

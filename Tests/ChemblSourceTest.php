@@ -23,7 +23,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  * Fixtures recorded from www.ebi.ac.uk/chembl/api/data (ChEMBL 37) and
  * www.ebi.ac.uk/unichem/api/v1 on 2026-10-15: caffeine (CHEMBL113) and
  * trastuzumab (CHEMBL1201585, an antibody: no structure), their mechanisms
- * and targets, UniChem's sources for both (caffeine's 177 clinical trials
+ * and targets (their components' synonyms and cross-references cut), UniChem's sources for both (caffeine's 177 clinical trials
  * cut to 2; trastuzumab "Not found"), the lookups by name and by synonym
  * ("caffeine", "guaranine", an unknown name), an unknown id (404, empty
  * body), the search for "caffeine" (offsets 0 and 3, three a page) and the
@@ -104,7 +104,7 @@ final class ChemblSourceTest extends TestCase
         self::assertSame('chembl', $caffeine->property('molecular_weight')->source);
         self::assertSame('https://www.ebi.ac.uk/chembl/explore/compound/CHEMBL113', $caffeine->url);
         self::assertSame('https://www.ebi.ac.uk/chembl/api/data/image/CHEMBL113.svg', $caffeine->image);
-        self::assertSame(['molecule/CHEMBL113.json', 'unichem CHEMBL113', 'mechanism.json?molecule_chembl_id=CHEMBL113&limit=50', 'target/set/CHEMBL2111329.json?only=target_chembl_id%2Cpref_name%2Ctarget_type%2Corganism'], $this->calls);
+        self::assertSame(['molecule/CHEMBL113.json', 'unichem CHEMBL113', 'mechanism.json?molecule_chembl_id=CHEMBL113&limit=50', 'target/set/CHEMBL2111329.json?only=target_chembl_id%2Cpref_name%2Ctarget_type%2Corganism%2Ctarget_components'], $this->calls);
     }
 
     public function testItsMechanismAndTarget(): void
@@ -115,6 +115,9 @@ final class ChemblSourceTest extends TestCase
         self::assertSame('antagonist', $caffeine->value('action_type'));
         self::assertSame('Adenosine receptor (protein family, Homo sapiens)', $caffeine->value('target'));
         self::assertSame('CHEMBL2111329', $caffeine->value('target_chembl_id'));
+        self::assertSame(['chembl:CHEMBL2111329'], $caffeine->related('target')->keys());
+        self::assertSame(['uniprot:P30542', 'uniprot:P29275', 'uniprot:P0DMS8', 'uniprot:P29274'], $caffeine->related('target_protein')->keys(), 'the adenosine receptors A1, A2b, A3, A2a: related, not its identifiers');
+        self::assertNull($caffeine->identifier(Scheme::UNIPROT));
     }
 
     public function testItsCrossReferencesFromUniChem(): void
@@ -174,6 +177,7 @@ final class ChemblSourceTest extends TestCase
         self::assertSame(4.0, $antibody->value('max_phase'));
         self::assertSame('Receptor tyrosine-protein kinase erbB-2 (single protein, Homo sapiens)', $antibody->value('target'));
         self::assertSame('inhibitor', $antibody->value('action_type'));
+        self::assertSame(['uniprot:P04626'], $antibody->related('target_protein')->keys(), 'HER2');
         self::assertSame(['chembl:CHEMBL1201585'], $antibody->identifiers()->keys(), 'UniChem knows no structure: "Not found"');
         self::assertNotContains('ABP-980', $antibody->synonyms, 'a research code');
     }

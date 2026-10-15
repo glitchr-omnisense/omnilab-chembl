@@ -1,1 +1,1 @@
-{"targets": [{"organism": "Homo sapiens", "pref_name": "Receptor tyrosine-protein kinase erbB-2", "target_chembl_id": "CHEMBL1824", "target_type": "SINGLE PROTEIN"}]}
+{"targets": [{"organism": "Homo sapiens", "pref_name": "Receptor tyrosine-protein kinase erbB-2", "target_chembl_id": "CHEMBL1824", "target_components": [{"accession": "P04626", "component_description": "Receptor tyrosine-protein kinase erbB-2", "component_id": 120, "component_type": "PROTEIN", "relationship": "SINGLE PROTEIN"}], "target_type": "SINGLE PROTEIN"}]}
