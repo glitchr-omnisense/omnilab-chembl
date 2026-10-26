@@ -1,6 +1,6 @@
 # omnilab/chembl
 
-ChEMBL for [omniscient/omnilab](https://github.com/glitchr-studio/omnilab): a bioactive molecule by its
+ChEMBL for [omnisense/omnilab](https://github.com/glitchr-omnisense/omnilab): a bioactive molecule by its
 ChEMBL id, its InChIKey or its name; its type, its maximum development phase, its computed
 properties (molecular weight, ALogP, polar surface area, hydrogen bond donors and acceptors,
 Lipinski's rule of five, QED), its structure (SMILES, InChI, InChIKey, an SVG depiction), its
