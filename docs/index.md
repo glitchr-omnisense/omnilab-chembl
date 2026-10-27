@@ -1,5 +1,11 @@
 # omnilab/chembl
 
+ChEMBL (EMBL-EBI), through its data web services (`https://www.ebi.ac.uk/chembl/api/data/`) and
+UniChem, for [omnisense/omnilab](https://github.com/glitchr-omnisense/omnilab): bioactive molecules
+by ChEMBL id, InChIKey or name - development phase, computed properties, mechanisms of action and
+their targets - with their ChEBI, PubChem, UNII and DSSTox ids from UniChem as cross-references, as
+entities; a search. No key.
+
 ## Installation
 
 ```sh
@@ -19,6 +25,48 @@ $chembl = (new ChemblSourceFactory($httpClient))->create([
 
 With the Symfony bundle, the factory is registered as `chembl` when the bundle knows it; otherwise
 register `ChemblSourceFactory` as a service (it is autoconfigured as a `SourceFactoryInterface`).
+
+## Credentials
+
+None: ChEMBL's data web services and UniChem take no key. Give `mailto`, the address the EBI writes
+to before it blocks a caller.
+
+## Options
+
+The factory's options, with the defaults it applies (`ChemblSourceFactory`):
+
+| Option | Type | Default | Required | Effect |
+|---|---|---|---|---|
+| `synonyms` | `int` | `20` | no | how many synonyms to keep; 0: none |
+| `unichem` | `bool` | `true` | no | `entity()` asks UniChem for the molecule's ChEBI, PubChem, UNII and DSSTox ids (one POST) |
+| `mechanisms` | `bool` | `true` | no | `entity()` asks the mechanisms of action and their targets (one or two calls) |
+| `unichem_uri` | `string` | `https://www.ebi.ac.uk/unichem/api/v1/compounds` | no | UniChem's compounds API, for the cross-references |
+| `mailto` | `?string` | null | no | a contact address, in the User-Agent: whom the EBI writes to before it blocks a caller |
+| `user_agent` | `?string` | null | no | the whole User-Agent, in place of the one made from `mailto` |
+| `throttle` | `float` | `0` | no | seconds left between two calls of the data web services (UniChem's POST is not spaced): the EBI publishes no figure |
+| `base_uri` | `string` | `https://www.ebi.ac.uk/chembl/api/data/` | no | ChEMBL's data web services |
+
+## Capabilities
+
+`capabilities()` answers `entity`, `search`, `structure`, `cross_references`; an operation it does not answer throws `NotSupportedException` before any call.
+
+| Capability | Supported | |
+|---|---|---|
+| `entity` | yes | a ChEMBL id (`CHEMBL113`, `chembl:`, its page), a standard InChIKey, or a name (preferred, then synonym); another scheme refused before any call; up to four calls |
+| `search` | yes | a full InChIKey or its first block (matched on the structures), else ChEMBL's full-text search, the best first, 100 a page at most, paged by offset, with a `total`; a domain other than chemistry answers an empty page |
+| `series` | no |  |
+| `products` | no |  |
+| `occurrences` | no |  |
+| `datasets` | no |  |
+| `jobs` | no |  |
+| `open` | no |  |
+| `structure` | yes | the image is ChEMBL's SVG of the structure (none for an antibody) |
+| `cross_references` | yes | the InChIKey and InChI, and from UniChem the ChEBI, PubChem, UNII and DSSTox ids; the mechanisms' targets are `related` |
+| `forecast` | no |  |
+| `historical` | no |  |
+| `area` | no |  |
+| `station` | no |  |
+| `cloud_cover` | no |  |
 
 ## Which API
 
@@ -134,6 +182,54 @@ biotherapeutic's sequence and description, the molfile, the similarity and subst
 searches and the targets' own records are not read. Nor are the cross-references UniChem gives
 in bases the core has no scheme for.
 
+## Example
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\Chembl\ChemblSourceFactory;
+use Omnilab\Model\Scheme;
+use Omnilab\Source\Query;
+use Symfony\Component\HttpClient\HttpClient;
+
+$chembl = (new ChemblSourceFactory(HttpClient::create()))->create(['mailto' => 'you@example.org', 'synonyms' => 3]);
+
+$aspirin = $chembl->entity('aspirin');
+echo $aspirin->label, ' (', $aspirin->id, '): phase ', $aspirin->value('max_phase'), ', ', $aspirin->property('molecular_weight'), ', mechanism: ', $aspirin->value('mechanism_of_action'), "\n";
+echo '  ChEBI ', $aspirin->identifier(Scheme::CHEBI), ', PubChem ', $aspirin->identifier(Scheme::PUBCHEM_CID), ', UNII ', $aspirin->identifier(Scheme::UNII), '; targets ', implode(', ', $aspirin->related('target')->values(Scheme::CHEMBL)), "\n";
+
+$page = $chembl->search(new Query('caffeine', limit: 3));
+printf("%d molecules for \"caffeine\"; the first %d: %s\n", $page->total, count($page), implode(', ', array_map(static fn ($m) => $m->id->value.' '.$m->label, $page->items)));
+```
+
+```
+Aspirin (chembl:CHEMBL25): phase 4, 180.16 g/mol, mechanism: Cyclooxygenase inhibitor
+  ChEBI 15365, PubChem 2244, UNII R16CO5Y76E; targets CHEMBL2094253
+110 molecules for "caffeine"; the first 3: CHEMBL113 Caffeine, CHEMBL1200569 Caffeine citrate, CHEMBL1927665 CHEMBL1927665
+```
+
+(as answered on 2026-10-27: five calls - the name, UniChem, the mechanisms and their target, the search)
+
+```yaml
+# config/packages/omnilab.yaml
+omnilab:
+    sources:
+        chembl: { factory: chembl, options: { mailto: '%env(OMNILAB_MAILTO)%', synonyms: 20, unichem: true, mechanisms: true } }
+```
+
+## Errors
+
+Every call goes through `HttpSource`: a 404 or a 410 (and a 204) is null - an empty page for a list -; a 429 is a `RateLimitedException` (`retryAfter` from `Retry-After`); a 5xx, a time-out or a host that does not answer an `UnavailableException`; any other 4xx a `ProviderException` with its `status` and what the service said; an answer that is not JSON a `ProviderException`, a web page answered for JSON an `UnavailableException`.
+
+ChEMBL's own: an unknown id is its 404 with an empty body, null; a name several molecules have as
+a synonym, none as its preferred name, is null. UniChem's POST is made by the source and mapped
+alike (a 429 a `RateLimitedException`, a 5xx an `UnavailableException`, another 4xx a
+`ProviderException`, "UniChem answered ..."); UniChem's "Not found" (an antibody) leaves the
+cross-references out. Before any call: an identifier of a scheme ChEMBL does not read (a PubChem
+CID, ChEBI, CAS, Wikidata, UniProt...) (`NotSupportedException`).
+
 ## Verified, and not
 
 Against the real services on 2026-10-15, without a key (ChEMBL 37): caffeine by its ChEMBL id,
@@ -146,8 +242,23 @@ aspirin's); the SVG of the structure (200, `image/svg+xml`; 404 for the antibody
 Collector's walk above. The fixtures in `Tests/Fixtures/` are its answers, UniChem's 177 clinical
 trials for caffeine cut to 2.
 
+Again on 2026-10-27: aspirin by its name (phase 4, its UniChem ids, its target), the search for
+"caffeine" (110 molecules; the example above).
+
 Not verified: ChEMBL's or UniChem's answer to a client that calls too fast (no 429 met, no rate
 published - the handling is the core's); a full-text search of an InChIKey, which ChEMBL answers
 with 10,000 unrelated molecules, which is why a key is matched on the structures instead. The
 UniChem call is a POST the core's `HttpSource` does not make: the source maps its errors the
 same way, but the `throttle` option does not space it.
+
+## Responsibility
+
+This package is an independent, unofficial client: it is not affiliated with, endorsed by or
+sponsored by ChEMBL or the EMBL-EBI. ChEMBL's data are under
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) - cite ChEMBL, share what is derived
+from it alike - and the [EMBL-EBI's terms of use](https://www.ebi.ac.uk/about/terms-of-use) reserve
+the right to block a client that loads the services unreasonably, as the README's
+[Terms of use](https://github.com/glitchr-omnisense/omnilab-chembl#terms-of-use) says. Whoever runs
+the package is responsible for complying with them and for any use made of what it returns: see
+the README's [Responsibility](https://github.com/glitchr-omnisense/omnilab-chembl#responsibility)
+section.
