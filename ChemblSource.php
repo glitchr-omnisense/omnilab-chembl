@@ -344,6 +344,7 @@ final class ChemblSource extends HttpSource
      */
     private function postJson(string $url, array $body): ?array
     {
+        $this->governed('POST', $url);
         try {
             $response = $this->http->request('POST', $url, ['json' => $body, 'headers' => ['Accept' => 'application/json'] + $this->headers]);
             $status = $response->getStatusCode();

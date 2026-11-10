@@ -50,6 +50,17 @@ services: the source makes its calls in series, up to four for a molecule; cache
 
 See [docs/](docs/index.md) for what is read, how it maps, and what ChEMBL does not give here.
 
+## Usage policy
+
+Declared as data in [`policy.json`](policy.json) (read at https://www.ebi.ac.uk/about/terms-of-use/ on 2026-11-10), and honoured on every request by the
+core: a limit reached waits when its window ends within `max_wait` seconds, else the request is not
+sent ([Usage policies](https://github.com/glitchr-omnisense/omnilab/blob/1.x/docs/policies.md)).
+
+- Limits: not published (unknown).
+- Licence: CC-BY-SA-3.0; commercial use: allowed.
+- Credit: required: ChEMBL (EMBL-EBI). Zdrazil B. et al. (2023) The ChEMBL Database in 2023. Nucleic Acids Res. doi:10.1093/nar/gkad1004; web services: Davies M. et al. (2015) Nucleic Acids Res. 43(W1):W612-20, doi:10.1093/nar/gkv352 (https://www.ebi.ac.uk/chembl/).
+- Needs: nothing.
+
 ## Responsibility
 
 This package is an independent, unofficial client: it is not affiliated with, endorsed by or
