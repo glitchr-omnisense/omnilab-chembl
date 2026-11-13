@@ -39,6 +39,34 @@ omnilab:
 With PubChem configured too, the `Collector` follows a compound from one to the other:
 `$collector->collect('pubchem', 'caffeine')` reaches ChEMBL by caffeine's InChIKey.
 
+## Install and a first call
+
+```sh
+composer require omnilab/chembl
+```
+
+A real call, with no account and no key: caffeine in ChEMBL. `mailto` is your address, sent in the
+User-Agent so that the service can reach you before it blocks a caller; the source keeps to the
+limits its [`policy.json`](policy.json) declares.
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\Chembl\ChemblSourceFactory;
+
+$chembl = (new ChemblSourceFactory())->create(['mailto' => 'you@example.org']);   // your address, in the User-Agent
+$caffeine = $chembl->entity('CHEMBL113');
+echo $caffeine->label, ', ', $caffeine->kind, ', max phase ', $caffeine->value('max_phase'), "\n";
+```
+
+Its output on 2026-11-13:
+
+```
+Caffeine, small molecule, max phase 4
+```
+
 ## Terms of use
 
 ChEMBL is run by EMBL-EBI, free and without a key. Its data is under
